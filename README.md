@@ -18,7 +18,7 @@ LinkedIn has said they’re working on a fix. Until then, this extension is a **
 
 ## What does this extension do?
 
-It runs **before** LinkedIn’s script and changes how `fetch` and `XMLHttpRequest` work **only for** URLs that start with `chrome-extension://`. For those URLs it immediately returns “failed” without sending a real network request. So:
+It runs **before** LinkedIn’s script and changes how `fetch`, `XMLHttpRequest`, and image loading work **only for** URLs that start with `chrome-extension://`. For those URLs it immediately returns “failed” without sending a real network request. So:
 
 - No thousands of real requests → no memory spike  
 - No thousands of console errors  
@@ -53,7 +53,13 @@ It runs **before** LinkedIn’s script and changes how `fetch` and `XMLHttpReque
 ## What’s in each file?
 
 - **manifest.json** – Tells Chrome: “Run `content.js` on LinkedIn pages, as early as possible (`document_start`), in the page’s own context (`world: MAIN`) so we can override `fetch` before LinkedIn’s script runs.”
-- **content.js** – The code that overrides `fetch` and `XMLHttpRequest` and blocks any request whose URL starts with `chrome-extension://`. Heavily commented so you can read and share it.
+- **content.js** – The code that overrides `fetch`, `XMLHttpRequest`, and image `src` and blocks any request whose URL starts with `chrome-extension://`. Heavily commented so you can read and share it.
+
+## Troubleshooting
+
+- **Reload the LinkedIn tab** after installing or updating the extension (F5 or Cmd+R on the LinkedIn page).
+- Make sure the extension is **enabled** at `chrome://extensions`.
+- If it only worked after you edited the manifest: the extension runs on `www.linkedin.com`, `linkedin.com`, and all `*.linkedin.com` subdomains. If your LinkedIn URL is different, ensure it's covered under the extension's "Site access" on the extension's details page.
 
 ## Will this break my other extensions?
 

@@ -16,20 +16,23 @@
  *
  * WHAT DOES THIS EXTENSION DO?
  * ---------------------------
- * We run before LinkedIn's script and replace the built-in "fetch" and
- * "XMLHttpRequest" with our own versions. When LinkedIn's script later tries
- * to fetch any URL that starts with "chrome-extension://", we immediately
- * say "failed" without actually sending a network request. So:
+ * We run before LinkedIn's script and replace the built-in "fetch",
+ * "XMLHttpRequest", and image "src" with our own versions. When LinkedIn's
+ * script tries to fetch or load any URL that starts with "chrome-extension://",
+ * we block it (no real network request). So:
  *
  *   - No thousands of real requests = no memory spike
  *   - No thousands of errors in the console
- *   - LinkedIn's script still runs; it just gets "failed" for those probes
+ *   - LinkedIn's script still runs; it just gets "failed" or no load for those probes
+ *
+ * LinkedIn probes via fetch/XHR on some pages and via Image (img.src) on others
+ * (e.g. profile pages /in/). We block all of these.
  *
  * We only block requests to chrome-extension:// URLs. All other requests
  * (your normal LinkedIn traffic, images, API calls) go through unchanged.
  *
  * PRIVACY: This extension does not collect, store, or send any data.
- * It only runs on LinkedIn and only changes how fetch/XHR behave for
+ * It only runs on LinkedIn and only changes how fetch/XHR/Image behave for
  * chrome-extension:// URLs.
  */
 
@@ -102,4 +105,28 @@
     // For everything else, use the real send.
     return realSend.apply(this, arguments);
   };
+
+  // -------------------------------------------------------------------------
+  // Override Image src (profile pages and some bundles use this to probe)
+  // -------------------------------------------------------------------------
+  // LinkedIn also probes by doing:  img = new Image(); img.src = "chrome-extension://...";
+  // Setting img.src to a chrome-extension URL triggers a network request and console error.
+  // We override the src setter so that when the value is a chrome-extension URL we set
+  // a harmless 1x1 transparent pixel instead, so no request is made.
+  var BLANK_IMG = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  var imgDesc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+  if (imgDesc && imgDesc.set) {
+    var nativeSetSrc = imgDesc.set;
+    Object.defineProperty(HTMLImageElement.prototype, 'src', {
+      set: function (val) {
+        if (typeof val === 'string' && val.indexOf(BLOCKED_URL_PREFIX) === 0) {
+          val = BLANK_IMG;
+        }
+        nativeSetSrc.call(this, val);
+      },
+      get: imgDesc.get,
+      configurable: true,
+      enumerable: true
+    });
+  }
 })();
